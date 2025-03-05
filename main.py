@@ -52,11 +52,21 @@ def get_artists_genres(sp, artist_ids):
                     raise
     return genres
 
-playlist_url = 'https://open.spotify.com/playlist/3z3ssAyKVkPBtThG44BcaX?si=5fc999cf17f246b0'
+# Asking user which playlist they want filtered
+print("Enter the playlist you want to filter: ")
+playlist_url = input()
 playlist_id = playlist_url.split('/')[-1].split('?')[0]
 
 # Get all tracks from the playlist
-results = sp.playlist_tracks(playlist_id)
+try:
+    results = sp.playlist_tracks(playlist_id)
+except spotipy.exceptions.SpotifyException as e:
+    if e.http_status == 404:
+        print("Playlist not found. Please check if the playlist exists and is public.")
+    else:
+        print(f"An error occurred: {e}")
+    exit()
+
 tracks = results['items']
 
 # Since the API call gets 100 songs at a time we need to keep sending requests until there isn't anything left
@@ -68,11 +78,10 @@ while results['next']:
 artist_ids = list(set(artist['id'] for track in tracks for artist in track['track']['artists']))
 all_genres = get_artists_genres(sp, artist_ids)
 
-# Asking user which genre they want to select from a playlist
-print("Enter the genre you want to filter by: ")
-selected_genre = input().lower()
+
 filtered_songs = []
 filtered_songs_genres = []
+songs = []
 
 # Finds unique elements in a list
 def unique_elements(set_list):
@@ -91,9 +100,9 @@ for track in tracks:
         genres.update(all_genres.get(artist['id'], set()))
 
     genres_str = ', '.join(genres) if genres else 'No genre information'
-    if selected_genre in genres_str.lower():
-        filtered_songs.append(track_id)
-        filtered_songs_genres.append(genres)
+    songs.append(f"{track_id} | {genres_str}")
+    filtered_songs.append(track_id)
+    filtered_songs_genres.append(genres)
 
 print(f"Number of filtered songs: {len(filtered_songs)}")
 
@@ -108,5 +117,7 @@ def create_playlist(sp2, username, playlist_name, playlist_description, filtered
 # new_playlist_id = create_playlist(sp2, auth_user_id, playlist_name, playlist_description, filtered_songs)
 #
 # print(f"Playlist '{playlist_name}' created successfully with ID: {new_playlist_id}")
+
+print(songs)
 filtered_songs_genres = unique_elements(filtered_songs_genres)
 print(filtered_songs_genres)
