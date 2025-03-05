@@ -4,6 +4,8 @@ from spotipy.exceptions import SpotifyException
 import os
 from dotenv import load_dotenv
 from time import sleep
+from collections import Counter
+import itertools
 
 # Getting api and secret from .env and Authenticating
 load_dotenv()
@@ -70,6 +72,12 @@ all_genres = get_artists_genres(sp, artist_ids)
 print("Enter the genre you want to filter by: ")
 selected_genre = input().lower()
 filtered_songs = []
+filtered_songs_genres = []
+
+# Finds unique elements in a list
+def unique_elements(set_list):
+    all_elements = list(itertools.chain(*set_list))
+    return {elem for elem, count in Counter(all_elements).items() if count == 1}
 
 # Print all track names, artists, and genres on a song by song basis
 for track in tracks:
@@ -85,6 +93,7 @@ for track in tracks:
     genres_str = ', '.join(genres) if genres else 'No genre information'
     if selected_genre in genres_str.lower():
         filtered_songs.append(track_id)
+        filtered_songs_genres.append(genres)
 
 print(f"Number of filtered songs: {len(filtered_songs)}")
 
@@ -94,8 +103,10 @@ def create_playlist(sp2, username, playlist_name, playlist_description, filtered
     sp2.user_playlist_add_tracks(username, playlist['id'], filtered_songs)
     return playlist['id']
 
-playlist_name = f"Filtered {selected_genre.capitalize()} Playlist"
-playlist_description = f"Playlist filtered by {selected_genre} genre."
-new_playlist_id = create_playlist(sp2, auth_user_id, playlist_name, playlist_description, filtered_songs)
-
-print(f"Playlist '{playlist_name}' created successfully with ID: {new_playlist_id}")
+# playlist_name = f"Filtered {selected_genre.capitalize()} Playlist"
+# playlist_description = f"Playlist filtered by {selected_genre} genre."
+# new_playlist_id = create_playlist(sp2, auth_user_id, playlist_name, playlist_description, filtered_songs)
+#
+# print(f"Playlist '{playlist_name}' created successfully with ID: {new_playlist_id}")
+filtered_songs_genres = unique_elements(filtered_songs_genres)
+print(filtered_songs_genres)
