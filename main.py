@@ -78,44 +78,28 @@ while results['next']:
 artist_ids = list(set(artist['id'] for track in tracks for artist in track['track']['artists']))
 all_genres = get_artists_genres(sp, artist_ids)
 
-filtered_songs_ids = []
-genres_for_count = []
-song_ids = []
-
-# Print all track names, artists, and genres on a song by song basis
-for track in tracks:
-    track_name = track['track']['name']
-    artists = track['track']['artists']
-    track_id = track['track']['id']
-    artist_names = ', '.join([artist['name'] for artist in artists])
-
-    genres = set()
-    for artist in artists:
-        genres.update(all_genres.get(artist['id'], set()))
-
-    genres_str = ', '.join(genres) if genres else 'No genre information'
-    song_ids.append(track_id)
-    filtered_songs_ids.append(track_id)
-    genres_for_count.append(genres)
-
-
-print(f"Number of songs in your playlist: {len(filtered_songs_ids)}")
-
 # Create playlist function that creates a new playlist and adds the filtered songs to it
 def create_playlist(sp2, username, playlist_name, playlist_description, filtered_songs):
     playlist = sp2.user_playlist_create(username, playlist_name, description=playlist_description, public=True)
     sp2.user_playlist_add_tracks(username, playlist['id'], filtered_songs)
     return playlist['id']
 
-# Flatten the list of genre sets into a single list of genres
-all_genres = [genre for genre_set in genres_for_count for genre in genre_set]
+# Process all tracks and collect genre information
+all_track_genres = []
+for track in tracks:
+    artists = track['track']['artists']
+    genres = set()
+    for artist in artists:
+        genres.update(all_genres.get(artist['id'], set()))
+    all_track_genres.append(genres)
 
 # Count occurrences of each genre
-genre_counts = Counter(all_genres)
+genre_counts = Counter(genre for genres in all_track_genres for genre in genres)
 
 # Sort genres by count in descending order
 sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
 
+print(f"Number of songs in your playlist: {len(tracks)}")
 print("Here is the count of songs for each genre in your playlist:")
 for genre, count in sorted_genres:
     print(f"{genre}: {count}, ", end="")
@@ -126,6 +110,7 @@ print(f"\nTotal unique genres: {len(genre_counts)}")
 print("\u001b[38;5;87mEnter the genre(s) you want to add to a new playlist. If there are multiple genres you'd"
       " like to add, enter it as a comma seperated list: \u001b[0m")
 genre_input = input()
+selected_genres = set(genre.strip().lower() for genre in genre_input.split(','))
 
 print("\u001b[38;5;87mEnter the name of your playlist: \u001b[0m")
 playlist_name_input = input()
@@ -133,7 +118,17 @@ playlist_name_input = input()
 print("\u001b[38;5;87mEnter a description of your playlist (Optional): \u001b[0m")
 playlist_description_input = input()
 
-# playlist_name = "Your New Playlist Name"
-# playlist_description = "Your playlist description"
-# new_playlist_id = create_playlist(sp2, auth_user_id, playlist_name, playlist_description, filtered_songs_ids)
-# print(f"Playlist '{playlist_name}' created successfully with ID: {new_playlist_id}")
+# Filter songs based on selected genres
+filtered_songs_ids = []
+for track, genres in zip(tracks, all_track_genres):
+    track_id = track['track']['id']
+    # Convert genres to lowercase for case-insensitive comparison
+    lower_genres = set(genre.lower() for genre in genres)
+    if lower_genres.intersection(selected_genres):
+        filtered_songs_ids.append(track_id)
+
+# Create the new playlist with filtered songs
+new_playlist_id = create_playlist(sp2, auth_user_id, playlist_name_input, playlist_description_input,
+                                  filtered_songs_ids)
+print(f"New Playlist '{playlist_name_input}' created successfully with ID: {new_playlist_id}")
+print(f"Number of songs in the new playlist: {len(filtered_songs_ids)}")
